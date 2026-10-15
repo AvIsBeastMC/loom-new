@@ -1,0 +1,53 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/new.ts",
+  "scripts": {
+    "dev": "node scripts/generate-build-info.mjs && NODE_ENV=development tsx watch src/new.ts",
+    "start": "NODE_ENV=production tsx src/new.ts",
+    "build:meta": "node scripts/generate-build-info.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@agendajs/postgres-backend": "^3.0.3",
+    "@ai-sdk/google": "^3.0.67",
+    "@discordjs/voice": "^0.19.2",
+    "@repo/db": "workspace:*",
+    "@repo/extra-types": "workspace:*",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/humanize-duration": "^3.27.4",
+    "@types/lodash": "^4.17.24",
+    "agenda": "^6.2.3",
+    "ai": "^6.0.175",
+    "axios": "^1.13.5",
+    "chalk": "^5.6.2",
+    "classnames": "^2.5.1",
+    "cors": "^2.8.6",
+    "discord.js": "^14.25.1",
+    "dotenv": "^17.3.1",
+    "dotenv-flow": "^4.1.0",
+    "eris": "^0.18.0",
+    "express": "^5.2.1",
+    "ffmpeg-static": "^5.3.0",
+    "humanize-duration": "^3.33.2",
+    "lodash": "^4.17.23",
+    "lru-cache": "^11.2.7",
+    "moment": "^2.30.1",
+    "obscenity": "^0.4.6",
+    "parse-duration": "^2.1.5",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "yaml": "^2.9.1",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.3.0"
+  }
+}

@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+generator json {
+  provider  = "prisma-json-types-generator"
+  allowAny  = "false"
+  namespace = "PrismaJson"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model AdminAccount {
+  username       String          @id @unique
+  password       String
+  discordUserId  String
+  discordServers DiscordServer[]
+}
+
+model Violation {
+  id              String   @id @default(cuid())
+  user            String
+  channel         String
+  guildId         String?
+  time            DateTime @default(now())
+  originalContent String
+}
+
+model DiscordServer {
+  id String @id @unique
+
+  shortName  String? @default("Management")
+  serverIcon String?
+  banner     String?
+
+  leaveAnnounceChannel String?
+  test_channel         String?
+  test_mode            Boolean            @default(false)
+  logs                 Logs[]
+  violationReports     ViolationReports[]
+  adminAccounts        AdminAccount[]
+
+  voiceChannelConfigurations VoiceChannelConfiguration[]
+
+  voiceSessions VoiceSession[]
+  guildMembers  GuildMember[]
+}
+
+enum VOICE_CHANNEL_PURPOSE {
+  PRODUCTIVITY
+  NONE
+}
+
+enum VOICE_CHANNEL_TYPE {
+  ANY
+  CAM_ONLY
+  CAM_SCREENSHARE
+}
+
+model VoiceChannelConfiguration {
+  // id based on discord voice channel id
+  id String @id
+
+  type    VOICE_CHANNEL_TYPE    @default(ANY)
+  purpose VOICE_CHANNEL_PURPOSE
+
+  discordServer   DiscordServer @relation(fields: [discordServerId], references: [id], onDelete: Cascade)
+  discordServerId String
+}
+
+model Logs {
+  id             String        @id @default(cuid())
+  discordChannel String?
+  content        String
+  type           LogsType
+  serverid       String
+  server         DiscordServer @relation(fields: [serverid], references: [id], onDelete: Cascade)
+}
+
+model ReminderSession {
+  id            String    @id @default(cuid())
+  discordUserId String
+  guildId       String
+  created       DateTime  @default(now())
+  ended         DateTime?
+  over          Boolean   @default(false)
+  interval      String
+
+  @@unique([discordUserId, guildId])
+}
+
+model GuildMessages {
+  id       String   @id
+  guildId  String
+  /// [DiscordUser] 
+  user     Json
+  content  String
+  /// [DiscordMessageInfo]
+  rawData  Json
+  dateTime DateTime @default(now())
+}
+
+model ViolationReports {
+  id          String        @id @default(cuid())
+  guildId     String
+  generatedBy String
+  timestamp   DateTime      @default(now())
+  /// [Violation]
+  report      Json
+  guild       DiscordServer @relation(fields: [guildId], references: [id], onDelete: Cascade)
+}
+
+enum LogsType {
+  FATAL
+  WARNING
+  INFO
+  SETTINGS_SET
+  SETTINGS_CHANGE
+}
+
+// REALTIME
+// ==========================================
+// Voice & Activity Tracking Models
+// ==========================================
+
+enum SessionStatus {
+  ACTIVE
+  PAST
+  // Room for future states (e.g. AFK, MUTED, DISCONNECTED)
+}
+
+model VoiceSession {
+  id        String        @id @default(cuid())
+  guildId   String        @map("guild_id")
+  userId    String        @map("user_id")
+  channelId String        @map("channel_id")
+  status    SessionStatus @default(ACTIVE)
+  joinedAt  DateTime      @default(now()) @map("joined_at") @db.Timestamptz
+  leftAt    DateTime?     @map("left_at") @db.Timestamptz
+
+  // Will be defined at the end of sessions
+  durationSeconds Int @default(0) @map("duration_seconds")
+
+  guild DiscordServer @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  // Fast lookups
+  @@index([guildId, userId], name: "idx_voice_sessions_user")
+  @@index([guildId, channelId], name: "idx_voice_sessions_channel")
+  @@index([guildId, userId, status], name: "idx_voice_sessions_active_user")
+  @@index([joinedAt(sort: Desc)], name: "idx_voice_sessions_recent")
+  @@map("voice_sessions")
+}
+
+enum USERVERIFIEDSTATUS {
+  UNVERIFIED
+  MSG_SENT
+  PENDING_APPROVAL
+  VERIFIED
+}
+
+model GuildMember {
+  userId  String        @id
+  guildId String
+  guild   DiscordServer @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  verificationStatus    USERVERIFIEDSTATUS @default(UNVERIFIED)
+  verificationChannelId String?
+
+  verificationResponse GuildMember_VerificationResponse?
+
+  @@unique([userId, guildId])
+}
+
+model GuildMember_VerificationResponse {
+  id String @id @default(cuid())
+
+  guildMember   GuildMember @relation(fields: [guildMemberId], references: [userId], onDelete: Cascade)
+  guildMemberId String      @unique
+
+  response String   @db.Text
+  time     DateTime @default(now())
+}

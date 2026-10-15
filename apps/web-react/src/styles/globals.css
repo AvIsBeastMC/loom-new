@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@layer base {
+  body {
+    @apply bg-[#111512] text-[#f0f2ec] antialiased;
+    font-size: 14px;
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@repo/extra-types",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "main": "./API.ts",
+  "types": "./API.ts",
+  "dependencies": {
+    "zod": "^4.3.6"
+  }
+}

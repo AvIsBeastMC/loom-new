@@ -1,0 +1,19 @@
+.env
+Dockerfile
+.dockerignore
+node_modules
+npm-debug.log
+README.md
+.next
+.git
+dist
+.vscode
+*.tsbuildinfo
+
+
+# Ignore all .env files by default
+**/.env*
+
+!apps/web-react/.env
+!apps/backend/.env.prod
+!packages/db/.env
