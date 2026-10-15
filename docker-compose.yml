@@ -25,6 +25,8 @@ services:
     volumes:
       - ./apps/backend/db:/app/apps/backend/db
       - ./apps/backend/assets:/app/apps/backend/assets
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   web-react:
     build:
