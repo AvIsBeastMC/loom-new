@@ -5,7 +5,7 @@
   "main": "src/new.ts",
   "scripts": {
     "dev": "node scripts/generate-build-info.mjs && NODE_ENV=development tsx watch src/new.ts",
-    "start": "node scripts/generate-build-info.mjs && NODE_ENV=production tsx src/new.ts",
+    "start": "NODE_ENV=production tsx src/new.ts",
     "build:meta": "node scripts/generate-build-info.mjs"
   },
   "keywords": [],
