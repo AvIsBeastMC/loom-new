@@ -20,9 +20,6 @@ services:
     working_dir: /app/apps/backend
     expose:
       - "3000"
-    env_file:
-      # - ./apps/backend/.eENVnv.prod
-      # - ./packages/db/.env
     environment:
       RUN_TYPE: "prod"
     volumes:

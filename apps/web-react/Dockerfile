@@ -22,7 +22,7 @@ COPY --from=pruner /app/out/full/ .
 COPY turbo.json turbo.json
 
 # Copy .env explicitly
-COPY apps/web-react/.env ./apps/web-react/.env
+# COPY apps/web-react/.env ./apps/web-react/.env
 
 # Build configs: bypass ESLint and TS errors during docker compilation
 ENV NEXT_TELEMETRY_DISABLED=1
