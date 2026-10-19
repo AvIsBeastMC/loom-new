@@ -3,6 +3,7 @@ import { store } from "../store"
 import { env } from "../../env";
 
 type Data = {
+  result: boolean;
   guild: {
     test_channel: string | null;
     test_mode: boolean;
@@ -30,6 +31,7 @@ export const getTestMode = async (guild: string): Promise<Data> => {
     }
   })
   return {
+    result: allTestMode ? true : data.test_mode,
     guild: data,
     server: {
       allTestMode,

@@ -49,7 +49,7 @@ export function registerMessageCreateEventFn(client: ClientType) {
 
     if (!serverDb) return errorLogger({ errMessage: "Server not found in Database", where: "new.ts | messageCreate" });
 
-    if (testModeSettings.server.allTestMode) return console.log('[ALLTESTMODE ENABLED] Quitting MessageCreate Inherent - Text Moderation Function');
+    if (testModeSettings.server.allTestMode) return console.log('[TESTMODE ENABLED] Quitting MessageCreate Inherent - Text Moderation Function');
 
     const warnEmbed = warnEmbedCreator({ authorId: msg.author.id, serverDb, matchesLength: matches.length })
 
