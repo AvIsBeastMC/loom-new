@@ -9,8 +9,8 @@ import z from 'zod';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-import {prisma} from '../../../db';
-import { getLeaderboard } from '../../../hooks/getLeaderboard';
+import { prisma } from '../../../db';
+import { getLeaderboard as getLeaderboardHook } from '../../../hooks/getLeaderboard';
 import moment from 'moment';
 
 const router: ExpressRouter = Router();
@@ -74,16 +74,15 @@ export const fontsImport = async () => {
   );
 };
 
-router.get("/leaderboards/test", async (req, res) => {
-  const guildParam = z.string().parse(req.query.guild)
-
+export const getLeaderboard = async ({ guildId, duration }: { guildId: string, duration: '24h' | '1month' | '1year' }) => {
   const guild = await prisma.discordServer.findUniqueOrThrow({
     where: {
-      id: guildParam
+      id: guildId
     }
   });
 
-  const leaderboard = (await getLeaderboard(moment().subtract(24, 'hours').toDate(), guildParam))
+  const [value, time] = duration == '24h' ? [24, 'hours'] : duration == '1month' ? [1, 'month'] : [1, 'year'];
+  const leaderboard = (await getLeaderboardHook(moment().subtract(value, time as any).toDate(), guildId))
 
   // Extract whatever type satori expects for its first param:
   type SatoriNode = Parameters<typeof satori>[0];
@@ -121,11 +120,13 @@ router.get("/leaderboards/test", async (req, res) => {
     </div>`;
   });
 
+  const durationText = duration == '24h' ? 'LAST 24 HOURS' : duration == '1month' ? 'LAST MONTH' : 'LAST YEAR'
+
   const file = (await fs.readFile(path.join(__dirname, './html/main.html'), 'utf-8'))
     .replaceAll('{{servericon}}', guild.serverIcon ?? "https://loom-static.arunnya.com/loom.jpg")
     .replaceAll('{{name}}', guild.shortName!)
     .replaceAll('{{leaderboard}}', leaderboardRender.join(" "))
-    .replaceAll('{{timecutoff}}', 'LAST 24 HOURS')
+    .replaceAll('{{timecutoff}}', durationText)
 
   const markup = html(file);
 
@@ -135,9 +136,25 @@ router.get("/leaderboards/test", async (req, res) => {
     fonts: await fontsImport()
   });
 
+  const png = new Resvg(svg, {
+    fitTo: {
+      mode: 'zoom',
+      value: 3, // Renders at 1200x1900 for razor-sharp Retina display
+    },
+  }).render().asPng();
+
+  return png;
+}
+
+router.get("/leaderboards/test", async (req, res) => {
+  const guildParam = z.string().parse(req.query.guild);
+  const durationParam = z.enum(['24h', '1month', '1year']).parse(req.query.duration);
+
+  const png = await getLeaderboard({ guildId: guildParam, duration: durationParam });
+
   res.setHeader('Content-Type', 'image/png');
   res.setHeader('Cache-Control', 'public, max-age=60');
-  const png = new Resvg(svg).render().asPng();
+
   return res.status(200).send(png);
 })
 

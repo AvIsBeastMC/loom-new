@@ -189,7 +189,7 @@ export function GuildVoiceSessions({ guild }: GuildVoiceSessionsProps) {
           <section aria-labelledby="active-sessions-title">
             <div className="mb-3 flex items-center justify-between gap-4"><div><h3 className="text-sm font-semibold" id="active-sessions-title">Live sessions</h3><p className="mt-1 text-[11px] text-[#929b91]">Elapsed time updates every second</p></div><span className="text-[11px] tabular-nums text-[#a9c786]">{active.length} active</span></div>
             {active.length ? <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">{active.map((session) => <UserVoiceSession key={session.id} session={session} />)}</div> : (
-              <div className="flex min-h-[112px] items-center gap-3 rounded-lg border border-dashed border-[#39433b] bg-[#151a16] px-4 py-5 sm:px-5"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-[#202720] text-[#929b91]"><RadioIcon aria-hidden="true" size={17} /></span><div><p className="text-xs font-semibold text-[#d9ded6]">No one is connected right now</p><p className="mt-1 text-[11px] text-[#929b91]">New voice sessions in {guild.name} will appear here.</p></div></div>
+              <div className="flex min-h-28 items-center gap-3 rounded-lg border border-dashed border-[#39433b] bg-[#151a16] px-4 py-5 sm:px-5"><span className="grid size-9 shrink-0 place-items-center rounded-md bg-[#202720] text-[#929b91]"><RadioIcon aria-hidden="true" size={17} /></span><div><p className="text-xs font-semibold text-[#d9ded6]">No one is connected right now</p><p className="mt-1 text-[11px] text-[#929b91]">New voice sessions in {guild.name} will appear here.</p></div></div>
             )}
           </section>
 
