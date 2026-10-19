@@ -1,0 +1,28 @@
+<div style="display:flex;flex-direction:column;width:600px;height:950px;box-sizing:border-box;padding:34px 36px;background:linear-gradient(145deg,#1b2019 0%,#0b0e0c 72%);color:#f3f5ee;font-family:Inter">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:18px;border-bottom:1px solid #30372e">
+    <div style="display:flex;align-items:center">
+      <div style="display:flex;width:48px;height:48px;align-items:center;justify-content:center;overflow:hidden;border-radius:13px;background-color:#c9f36a">
+        <img src="{{servericon}}" alt="" width="48" height="48" style="width:48px;height:48px;object-fit:cover" />
+      </div>
+      <div style="display:flex;flex-direction:column;margin-left:12px">
+        <span style="font-size:11px;font-weight:800;color:#c9f36a">COMMUNITY ACTIVITY</span>
+        <h1 style="margin:3px 0 0;font-size:23px;line-height:1.1;font-weight:800">VOICE LEADERBOARD</h1>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;padding:9px 10px;border:1px solid #3b4438;border-radius:999px;color:#d4ddcf;font-size:10px;font-weight:600">
+      <div style="width:7px;height:7px;margin-right:7px;border-radius:4px;background-color:#c9f36a"></div>
+      {{timecutoff}}
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 2px 10px">
+    <span style="font-size:13px;font-weight:800;color:#f3f5ee">TOP 10 CONTRIBUTORS</span>
+    <span style="font-size:10px;font-weight:600;color:#849080">TIME SPENT</span>
+  </div>
+  <div style="display:flex;flex-direction:column">
+    {{leaderboard}}
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:12px;border-top:1px solid #30372e;color:#849080;font-size:10px;font-weight:600">
+    <span>PRODUCTIVITY</span>
+    <span>{{name}}</span>
+  </div>
+</div>

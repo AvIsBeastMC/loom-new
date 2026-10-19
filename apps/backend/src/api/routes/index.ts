@@ -5,6 +5,7 @@ import reports from './reports';
 import serverSettings from './server-settings';
 import violations from './violations';
 import system from './system';
+import leaderboards from './leaderboards/index'
 
 const router: ExpressRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(reports);
 router.use(serverSettings);
 router.use(violations);
 router.use(system);
+router.use(leaderboards);
 
 export default router;

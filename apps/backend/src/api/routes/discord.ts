@@ -6,6 +6,7 @@ import getDiscordGuild from '../../hooks/getDiscordGuild';
 import getDiscordGuildChannel from '../../hooks/getDiscordGuildChannel';
 import { getGuildAPICache, getGuildChannelCache, getUserAPICache } from '../../hooks/cache';
 import { env } from '../../../env';
+import { getDiscordUserCached } from '../../hooks/getDiscordUser';
 
 const router: ExpressRouter = Router();
 
@@ -27,15 +28,10 @@ router.post('/discord/get-guild', async (req, res) => {
 router.post('/discord/get-user', async (req, res) => {
   try {
     const { userID } = await z.object({ userID: z.string() }).parseAsync(req.body);
-    const cachedUser = getUserAPICache.get(userID);
-    if (cachedUser) return res.json(cachedUser);
+    
+    const data = await getDiscordUserCached(userID);
 
-    const discordResponse: AxiosResponse<RESTGetAPIUserResult> = await axios.get(
-      `https://discord.com/api/users/${userID}`,
-      { headers: { Authorization: `Bot ${env.DISCORD_BOT}` } }
-    );
-    getUserAPICache.set(userID, discordResponse.data);
-    return res.json(discordResponse.data);
+    return res.json(data);
   } catch (error) {
     console.log(error);
     return res.status(400).json({ error: 'Error Occurred.', e: error });
