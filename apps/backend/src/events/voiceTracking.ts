@@ -1,5 +1,5 @@
 // handlers.ts
-import { EmbedBuilder, type ApplicationCommandDataResolvable, type GuildTextBasedChannel } from "discord.js";
+import { BaseGuildVoiceChannel, EmbedBuilder, Guild, GuildMember, VoiceState, type ApplicationCommandDataResolvable, type GuildTextBasedChannel } from "discord.js";
 import { prisma } from "../db";
 import type { ClientType } from "../new";
 import commandHandlers from "../commands/commandHandlers";
@@ -9,6 +9,8 @@ import chalk from "chalk";
 import cn from "classnames";
 import isProductivityVC from "../hooks/isProductivityVC";
 import { getServerWideTestMode } from "../hooks/getTestMode";
+import { destroyVCEnforcementJob, type VCEnforcementDataType } from "../hooks/jobs/vc-enforcement";
+import { agenda } from "../hooks/cron";
 
 // hooks
 const closeActiveSessions = async ({ userId, guildId, client }: { userId: string, guildId: string, client: ClientType }) => {
@@ -75,17 +77,87 @@ const openActiveSession = async ({ userId, guildId, client, newChannelId }: { us
   // Realtime fires an INSERT event
 };
 
+const checkAndCreateEnforcementJob = async (member: GuildMember, guild: Guild, channel: BaseGuildVoiceChannel) => {
+  // const jobs = await agenda.queryJobs({
+  //   name: "vc-enforcement",
+  //   data: {
+  //     'guild': member.guild.id,
+  //     'user': member.user.id
+  //   }
+  // });
+
+  // if (jobs.jobs.length > 0) return;
+
+  const payload: VCEnforcementDataType = {
+    guild: guild.id,
+    interval: "10 seconds",
+    user: member.user.id,
+    vcChannelId: channel.id,
+    warnings: 0
+  }
+
+  // enable timer.
+  const job = agenda.create('vc-enforcement', payload);
+  // Only matches an existing document IF BOTH fields match
+  job.unique({
+    'data.user': member.user.id,
+    'data.guild': guild.id
+  });
+
+  job.repeatEvery('10 seconds', { skipImmediate: true });
+  await job.save();
+};
+
+const enforcementCheckRun = async (oldState: VoiceState, newState: VoiceState) => {
+  const member = newState.member ?? oldState.member;
+  const guild = newState.guild ?? oldState.guild;
+  const channel = newState.channel;
+
+  if (!member || !channel) return;
+
+  // if its a VC which has enforcement, check db:
+  const dbVC = await prisma.voiceChannelConfiguration.findUnique({
+    where: {
+      id: channel.id
+    }
+  });
+
+  if (!dbVC) {
+    await destroyVCEnforcementJob({ user: member.user.id, guildId: guild.id });
+    return;
+  };
+  // you have to check here for cam/screenshare: if both video and screenshare are OFF, then create
+  const isCamOk = !!newState.selfVideo;
+  const isStreamOk = dbVC.type === 'CAM_SCREENSHARE' && !!newState.streaming;
+
+  if (isCamOk || isStreamOk) {
+    // Compliant -> cancel timers
+    await destroyVCEnforcementJob({ user: member.user.id, guildId: guild.id });
+  } else {
+    // Non-compliant -> schedule enforcement
+    await checkAndCreateEnforcementJob(member, guild, channel);
+  }
+}
+
 export function registerVoiceTracking(client: ClientType) {
   client.on('voiceStateUpdate', async (oldState, newState) => {
     if (getServerWideTestMode()) return console.log('[ALLTESTMODE ENABLED] Quitting VoiceStateUpdate Inherent - Record VC Sessions Function.');
 
     try {
-      const userId = newState.id;
-      const guildId = newState.guild.id;
+      const member = newState.member ?? oldState.member;
+      const userId = member?.id;
+      const guildId = newState.guild?.id ?? oldState.guild?.id;
       const oldChannelId = oldState.channelId;
       const newChannelId = newState.channelId;
 
-      if (newState.member?.user.bot || oldChannelId === newChannelId) return;
+      if (!guildId || !member || member.user.bot || !userId) return;
+
+      if (oldChannelId === newChannelId) {
+        if (oldState.selfVideo !== newState.selfVideo || oldState.streaming !== newState.streaming) {
+          await enforcementCheckRun(oldState, newState);
+        }
+        return;
+      };
 
       if ((oldChannelId == null && newChannelId)) {
         // New connection to VC
@@ -96,10 +168,16 @@ export function registerVoiceTracking(client: ClientType) {
           chalk.gray(`(@${newState.member?.user.username})`),
         )));
 
+        await destroyVCEnforcementJob({ user: userId, guildId: guildId })
         await closeActiveSessions({ userId, guildId, client });
         const isProductive = await isProductivityVC({ channelId: newChannelId })
-        if (isProductive) await openActiveSession({ client, guildId, userId, newChannelId })
+
+        if (isProductive) {
+          await openActiveSession({ client, guildId, userId, newChannelId })
+          await enforcementCheckRun(oldState, newState);
+        }
       } else if ((oldChannelId && newChannelId)) {
+
         // Moved to another VC
         console.log(chalk.white(cn(
           chalk.bgBlue.white.bold(" MOVE "),
@@ -108,10 +186,19 @@ export function registerVoiceTracking(client: ClientType) {
           chalk.gray(`(@${newState.member?.user.username})`),
         )));
 
+        await destroyVCEnforcementJob({ user: userId, guildId: guildId })
         await closeActiveSessions({ userId, guildId, client });
         const isProductive = await isProductivityVC({ channelId: newChannelId })
-        if (isProductive) await openActiveSession({ client, guildId, userId, newChannelId })
+        if (isProductive) {
+          await openActiveSession({ client, guildId, userId, newChannelId })
+          await enforcementCheckRun(oldState, newState);
+        } 
       } else if ((oldChannelId && !newChannelId)) {
+        const targetUserId = userId; // already extracted from newState.id
+        const targetGuildId = guildId;
+
+        await closeActiveSessions({ userId: targetUserId, guildId: targetGuildId, client });
+        await destroyVCEnforcementJob({ user: targetUserId, guildId: targetGuildId });
         // Disconnected from VC, stop all active sessions
         console.log(chalk.white(cn(
           chalk.bgRed.white.bold(" LEFT "),
@@ -119,8 +206,6 @@ export function registerVoiceTracking(client: ClientType) {
           chalk.bold(newState.member?.user.displayName ?? newState.member?.user.username),
           chalk.gray(`(@${newState.member?.user.username})`),
         )));
-
-        await closeActiveSessions({ userId, guildId, client });
       } else if ((!oldChannelId && !newChannelId)) {
         console.log(chalk.white(cn(
           chalk.bgRed.white.bold(" LEFT "),
@@ -130,6 +215,7 @@ export function registerVoiceTracking(client: ClientType) {
         )));
 
         await closeActiveSessions({ userId, guildId, client });
+        await destroyVCEnforcementJob({ user: userId, guildId: guildId });
       }
     } catch (error) {
       errorLogger({ errMessage: "voiceStateUpdate MASTER function", where: "/src/events/voiceTracking.ts" });

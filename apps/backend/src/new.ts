@@ -21,6 +21,7 @@ import { setupVerificationEmbedMsg } from './events/setupVerificationEmbed';
 import { handleButtons } from './events/handleButtons';
 import { registerAllServers } from './events/getAllServers';
 import { registerVoiceTracking } from './events/voiceTracking';
+import { defineVCEnforcementJob } from './hooks/jobs/vc-enforcement';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,6 +58,7 @@ handleButtons(client);
 // Define all jobs BEFORE starting agenda
 defineReminderJob();
 defineSystemJob();
+defineVCEnforcementJob();
 
 void (async () => {
   try {
