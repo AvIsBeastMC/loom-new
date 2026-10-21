@@ -67,17 +67,21 @@ export const defineVCEnforcementJob = () => {
         return;
       }
 
+      const isCompliant = () => guildDBChannelConfig.type === 'CAM_ONLY'
+        ? member.voice.selfVideo
+        : guildDBChannelConfig.type === 'CAM_SCREENSHARE'
+          ? member.voice.selfVideo || member.voice.streaming
+          : true;
+
+      if (isCompliant()) {
+        await data.remove();
+        return;
+      }
+
       const requirement = guildDBChannelConfig.type === 'CAM_ONLY'
         ? 'Camera must stay on'
         : 'Camera or screen share must stay on';
       const serverIcon = guildDBFetch.serverIcon || 'https://loom-static.arunnya.com/loom.jpg';
-
-      // if camera, cam/screenshare on, skip.
-      if (guildDBChannelConfig.type == 'CAM_ONLY') {
-        if (member.voice.selfVideo) return;
-      } else if (guildDBChannelConfig.type == 'CAM_SCREENSHARE') {
-        if (member.voice.selfVideo || member.voice.streaming) return;
-      } else return;
 
       // Warn and exit here
       if (warnings === 0) {
@@ -98,6 +102,11 @@ export const defineVCEnforcementJob = () => {
         await channel.send({
           embeds: [embed],
         });
+
+        if (member.voice.channelId !== vcChannelId || isCompliant()) {
+          await data.remove();
+          return;
+        }
 
         data.attrs.data = {
           ...data.attrs.data,
@@ -121,6 +130,11 @@ export const defineVCEnforcementJob = () => {
           .setThumbnail(member.displayAvatarURL({ size: 128 }))
           .setFooter({ text: `Voice channel enforcement • ${guildDBFetch.shortName}` })
           .setTimestamp();
+
+        if (member.voice.channelId !== vcChannelId || isCompliant()) {
+          await data.remove();
+          return;
+        }
 
         await member.voice.disconnect();
         await channel.send({
