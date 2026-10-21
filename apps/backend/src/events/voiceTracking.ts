@@ -128,6 +128,12 @@ const enforcementCheckRun = async (oldState: VoiceState, newState: VoiceState) =
     await destroyVCEnforcementJob({ user: member.user.id, guildId: guild.id });
     return;
   };
+
+  if (dbVC.type == 'ANY') {
+    await destroyVCEnforcementJob({ user: member.user.id, guildId: guild.id });
+    return;
+  };
+
   // you have to check here for cam/screenshare: if both video and screenshare are OFF, then create
   const isCamOk = !!newState.selfVideo;
   const isStreamOk = dbVC.type === 'CAM_SCREENSHARE' && !!newState.streaming;
