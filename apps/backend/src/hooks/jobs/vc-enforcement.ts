@@ -85,6 +85,7 @@ export const defineVCEnforcementJob = () => {
 
       // Warn and exit here
       if (warnings === 0) {
+        console.log(cn('MEMBER WAS WARNED', member.user.username, member.guild.name))
         const embed = new EmbedBuilder()
           .setAuthor({ name: `${guildDBFetch.shortName} • Voice Features`, iconURL: serverIcon })
           .setTitle('Reminder!')
@@ -117,6 +118,7 @@ export const defineVCEnforcementJob = () => {
 
         await data.save();
       } else {
+        console.log(cn('MEMBER WAS KICKED', member.user.username, member.guild.name))
         // ge out kardo
         const embed = new EmbedBuilder()
           .setAuthor({ name: `${guildDBFetch.shortName} • Voice Features`, iconURL: serverIcon })
