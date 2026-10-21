@@ -8,7 +8,7 @@ import moment from "moment";
 import chalk from "chalk";
 import cn from "classnames";
 import isProductivityVC from "../hooks/isProductivityVC";
-import { getServerWideTestMode } from "../hooks/getTestMode";
+import { getServerWideTestMode, getTestMode } from "../hooks/getTestMode";
 import { destroyVCEnforcementJob, type VCEnforcementDataType } from "../hooks/jobs/vc-enforcement";
 import { agenda } from "../hooks/cron";
 
@@ -106,6 +106,8 @@ const checkAndCreateEnforcementJob = async (member: GuildMember, guild: Guild, c
 
   job.repeatEvery('10 seconds', { skipImmediate: true });
   await job.save();
+  
+  console.log(cn(chalk.bgYellow.white('VC Enforcement job created'), JSON.stringify(payload)))
 };
 
 const enforcementCheckRun = async (oldState: VoiceState, newState: VoiceState) => {
@@ -151,6 +153,7 @@ export function registerVoiceTracking(client: ClientType) {
       const newChannelId = newState.channelId;
 
       if (!guildId || !member || member.user.bot || !userId) return;
+      // const testmode = await getTestMode(guildId);
 
       if (oldChannelId === newChannelId) {
         if (oldState.selfVideo !== newState.selfVideo || oldState.streaming !== newState.streaming) {
@@ -160,7 +163,12 @@ export function registerVoiceTracking(client: ClientType) {
       };
 
       if ((oldChannelId == null && newChannelId)) {
+        // 
+        // 
         // New connection to VC
+        // 
+        // 
+
         console.log(chalk.white(cn(
           chalk.bgGreen.black.bold(" JOIN "),
           chalk.gray(moment().format("lll")),
@@ -170,8 +178,8 @@ export function registerVoiceTracking(client: ClientType) {
 
         await destroyVCEnforcementJob({ user: userId, guildId: guildId })
         await closeActiveSessions({ userId, guildId, client });
-        const isProductive = await isProductivityVC({ channelId: newChannelId })
 
+        const isProductive = await isProductivityVC({ channelId: newChannelId })
         if (isProductive) {
           await openActiveSession({ client, guildId, userId, newChannelId })
           await enforcementCheckRun(oldState, newState);
@@ -188,6 +196,7 @@ export function registerVoiceTracking(client: ClientType) {
 
         await destroyVCEnforcementJob({ user: userId, guildId: guildId })
         await closeActiveSessions({ userId, guildId, client });
+
         const isProductive = await isProductivityVC({ channelId: newChannelId })
         if (isProductive) {
           await openActiveSession({ client, guildId, userId, newChannelId })
@@ -197,8 +206,8 @@ export function registerVoiceTracking(client: ClientType) {
         const targetUserId = userId; // already extracted from newState.id
         const targetGuildId = guildId;
 
-        await closeActiveSessions({ userId: targetUserId, guildId: targetGuildId, client });
         await destroyVCEnforcementJob({ user: targetUserId, guildId: targetGuildId });
+        await closeActiveSessions({ userId: targetUserId, guildId: targetGuildId, client });
         // Disconnected from VC, stop all active sessions
         console.log(chalk.white(cn(
           chalk.bgRed.white.bold(" LEFT "),
@@ -214,8 +223,8 @@ export function registerVoiceTracking(client: ClientType) {
           chalk.gray(`(@${newState.member?.user.username})`),
         )));
 
-        await closeActiveSessions({ userId, guildId, client });
         await destroyVCEnforcementJob({ user: userId, guildId: guildId });
+        await closeActiveSessions({ userId, guildId, client });
       }
     } catch (error) {
       errorLogger({ errMessage: "voiceStateUpdate MASTER function", where: "/src/events/voiceTracking.ts" });

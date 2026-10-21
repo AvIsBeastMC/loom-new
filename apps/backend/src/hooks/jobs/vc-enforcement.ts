@@ -7,7 +7,7 @@ import { client } from "../../new";
 import { agenda } from "../cron";
 import { prisma } from "../../db";
 import cn from 'classnames'
-import { BaseGuildVoiceChannel, EmbedBuilder, type VoiceChannel } from "discord.js";
+import { BaseGuildVoiceChannel, EmbedBuilder, userMention, type VoiceChannel } from "discord.js";
 
 export type VCEnforcementDataType = {
   vcChannelId: string, guild: string, user: string, interval: string, warnings: number
@@ -21,6 +21,7 @@ export const destroyVCEnforcementJob = async ({ user, guildId }: { user: string,
       'data.user': user,
       'data.guild': guildId
     });
+    console.log(cn(chalk.bgRedBright.white('VC Enforcement job DESTROYED'), JSON.stringify({ user, guildId })))
   } catch (e) {
     console.log(cn(chalk.bgRed.white("DESTROY JOB FAILED (some part)"), JSON.stringify(e)));
   }
@@ -55,8 +56,10 @@ export const defineVCEnforcementJob = () => {
       const member = await guildFetch.members.fetch(user);
       const channel = await guildFetch.channels.fetch(vcChannelId) as BaseGuildVoiceChannel;
 
-      const warning1 = guildDBChannelConfig.type == 'CAM_ONLY' ? 'Camera-only Productivity Channel' : 'Camera/Screenshare-only Productivity Channel'
-      const warning2 = guildDBChannelConfig.type == 'CAM_ONLY' ? 'keep your Camera on' : 'keep either your Camera or Screenshare on'
+      const requirement = guildDBChannelConfig.type === 'CAM_ONLY'
+        ? 'Camera must stay on'
+        : 'Camera or screen share must stay on';
+      const serverIcon = guildDBFetch.serverIcon || 'https://loom-static.arunnya.com/loom.jpg';
 
       // if camera, cam/screenshare on, skip.
       if (guildDBChannelConfig.type == 'CAM_ONLY') {
@@ -65,16 +68,22 @@ export const defineVCEnforcementJob = () => {
         if (member.voice.selfVideo || member.voice.streaming) return;
       }
 
-      const embed = new EmbedBuilder()
-        .setTitle(`WARNING! <@${member.id}>`)
-        .setColor('Red')
-        .setDescription(`You're currently in a **${warning1}**, where you're required to ${warning2}. Please do so as soon as possible to avoid getting kicked from this voice channel!`)
-        .setThumbnail(guildDBFetch.serverIcon || 'https://loom-static.arunnya.com/loom.jpg')
-        .setFooter({ text: `Voice Features • ${guildDBFetch.shortName}`, iconURL: guildDBFetch.serverIcon || 'https://loom-static.arunnya.com/loom.jpg' })
-        .setTimestamp(new Date());
-
       // Warn and exit here
       if (warnings === 0) {
+        const embed = new EmbedBuilder()
+          .setAuthor({ name: `${guildDBFetch.shortName} • Voice Features`, iconURL: serverIcon })
+          .setTitle('Reminder!')
+          .setColor(0xF0B429)
+          .setDescription(`${userMention(member.user.id)}, please meet the channel requirement to stay in **${channel.name}**.`)
+          .addFields(
+            { name: 'Channel requirement', value: requirement, inline: true },
+            { name: 'Time to respond', value: interval, inline: true },
+            { name: 'Next step', value: 'Turn it on before the next check to avoid being removed.' }
+          )
+          .setThumbnail(member.displayAvatarURL({ size: 128 }))
+          .setFooter({ text: `${guildDBFetch.shortName}` })
+          .setTimestamp();
+
         channel.send({
           embeds: [embed],
         });
@@ -90,12 +99,17 @@ export const defineVCEnforcementJob = () => {
       } else {
         // ge out kardo
         const embed = new EmbedBuilder()
-          .setTitle(`Kicked <@${member.user.id}>`)
-          .setColor('DarkRed')
-          .setDescription(`You've been kicked for violating Voice Channel rules for this room.`)
-          .setThumbnail(guildDBFetch.serverIcon || 'https://loom-static.arunnya.com/loom.jpg')
-          .setFooter({ text: `Voice Features • ${guildDBFetch.shortName}`, iconURL: guildDBFetch.serverIcon || 'https://loom-static.arunnya.com/loom.jpg' })
-          .setTimestamp(new Date());
+          .setAuthor({ name: `${guildDBFetch.shortName} • Voice Features`, iconURL: serverIcon })
+          .setTitle('You were removed from the voice channel')
+          .setColor(0xD64545)
+          .setDescription(`${userMention(member.user.id)}, you were removed from **${channel.name}** because the channel requirement wasn't met.`)
+          .addFields(
+            { name: 'Channel requirement', value: requirement },
+            { name: 'To rejoin', value: 'Meet the channel requirement before joining again.' }
+          )
+          .setThumbnail(member.displayAvatarURL({ size: 128 }))
+          .setFooter({ text: `Voice channel enforcement • ${guildDBFetch.shortName}` })
+          .setTimestamp();
 
         await member.voice.disconnect();
         channel.send({

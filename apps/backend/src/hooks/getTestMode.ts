@@ -21,7 +21,7 @@ export const getServerWideTestMode = () => {
 export const getTestMode = async (guild: string): Promise<Data> => {
   const allTestMode = store.getState().allTestMode;
 
-  const data = await prisma.discordServer.findUniqueOrThrow({
+  const server = await prisma.discordServer.findUniqueOrThrow({
     where: {
       id: guild
     },
@@ -31,8 +31,8 @@ export const getTestMode = async (guild: string): Promise<Data> => {
     }
   })
   return {
-    result: allTestMode ? true : data.test_mode,
-    guild: data,
+    result: server.test_mode ? true : allTestMode,
+    guild: server,
     server: {
       allTestMode,
       run_type: env.RUN_TYPE
