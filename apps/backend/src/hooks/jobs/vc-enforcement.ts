@@ -34,27 +34,38 @@ export const defineVCEnforcementJob = () => {
 
     const { user, guild, interval, vcChannelId, warnings } = data.attrs.data;
 
-    const guildFetch = client.guilds.cache.get(guild);
-    const guildDBFetch = await prisma.discordServer.findUniqueOrThrow({
-      where: {
-        id: guild
-      },
-      include: {
-        voiceChannelConfigurations: {
-          where: {
-            id: vcChannelId
+    try {
+      const guildFetch = client.guilds.cache.get(guild);
+      if (!guildFetch) {
+        throw new Error(`Guild ${guild} is not available in the client cache.`);
+      }
+
+      const guildDBFetch = await prisma.discordServer.findUniqueOrThrow({
+        where: {
+          id: guild
+        },
+        include: {
+          voiceChannelConfigurations: {
+            where: {
+              id: vcChannelId
+            }
           }
         }
+      });
+
+      const guildDBChannelConfig = guildDBFetch.voiceChannelConfigurations[0];
+      if (!guildDBChannelConfig) {
+        await data.remove();
+        return;
       }
-    });
 
-    const guildDBChannelConfig = guildDBFetch.voiceChannelConfigurations[0];
-
-    if (!guildFetch || !guildDBChannelConfig) return console.log('VC-Enforcement:', JSON.stringify(data), '\nError: couldnt fetch guild info.');
-
-    try {
       const member = await guildFetch.members.fetch(user);
       const channel = await guildFetch.channels.fetch(vcChannelId) as BaseGuildVoiceChannel;
+
+      if (member.voice.channelId !== vcChannelId) {
+        await data.remove();
+        return;
+      }
 
       const requirement = guildDBChannelConfig.type === 'CAM_ONLY'
         ? 'Camera must stay on'
@@ -66,7 +77,7 @@ export const defineVCEnforcementJob = () => {
         if (member.voice.selfVideo) return;
       } else if (guildDBChannelConfig.type == 'CAM_SCREENSHARE') {
         if (member.voice.selfVideo || member.voice.streaming) return;
-      }
+      } else return;
 
       // Warn and exit here
       if (warnings === 0) {
@@ -84,7 +95,7 @@ export const defineVCEnforcementJob = () => {
           .setFooter({ text: `${guildDBFetch.shortName}` })
           .setTimestamp();
 
-        channel.send({
+        await channel.send({
           embeds: [embed],
         });
 
@@ -112,7 +123,7 @@ export const defineVCEnforcementJob = () => {
           .setTimestamp();
 
         await member.voice.disconnect();
-        channel.send({
+        await channel.send({
           embeds: [embed]
         });
 
@@ -122,8 +133,7 @@ export const defineVCEnforcementJob = () => {
 
       return;
     } catch (error) {
-      console.log(cn(chalk.bgRed.white('VC-Enforcement Function Failure: '), JSON.stringify(error)));
-      return await data.remove();
+      console.error(cn(chalk.bgRed.white('VC-Enforcement Function Failure: ')), error);
     }
   });
 };
