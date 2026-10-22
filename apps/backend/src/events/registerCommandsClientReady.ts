@@ -14,7 +14,7 @@ export function registerCommandsClientReady(client: ClientType) {
           option
             .setName('duration')
             .setDescription('For what time period?')
-            .setRequired(false)
+            .setRequired(true)
             .addChoices(
               { name: '24 Hours', value: '24h' },
               { name: '1 month', value: '1month' },
